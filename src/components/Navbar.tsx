@@ -1,31 +1,76 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+
 const Navbar = () => {
+  const [open, setOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-teal-100">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-6">
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-6">
         {/* Logo */}
-        <div className="flex items-center gap-3 font-black text-2xl shrink-0 text-teal-700">
+        <Link to="/" className="flex items-center gap-3 font-extrabold text-2xl shrink-0 text-teal-700">
           <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-cyan-500 rounded-xl shadow-lg flex items-center justify-center">
-            <span className="text-white text-xl">⚔️</span>
+            <span className="text-white text-xl"></span>
           </div>
-          VLK Analyzer
-        </div>
+          <span>VLK Analyzer</span>
+        </Link>
 
-        {/* Search */}
-        <div className="hidden md:block flex-1 max-w-xl">
+        {/* Search (desktop) */}
+        <div className="hidden md:flex flex-1 max-w-xl">
           <input
-            className="w-full rounded-full px-6 py-3 bg-teal-50 border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
-            placeholder="Search game stats..."
+            aria-label="Search game stats"
+            className="w-full rounded-full px-4 py-2 bg-teal-50 border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent transition"
+            placeholder="Search players, matches, items..."
           />
         </div>
 
-        {/* Nav */}
-        <nav className="flex items-center gap-8 text-sm font-semibold shrink-0">
+        {/* Desktop nav */}
+        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold shrink-0">
           <a className="hover:text-teal-600 transition" href="#features">Features</a>
           <a className="hover:text-teal-600 transition" href="#how">How It Works</a>
-          <button className="bg-teal-600 text-white px-6 py-2 rounded-full hover:bg-teal-700 transition shadow-md hover:shadow-lg">
-            Dashboard
-          </button>
+          <a className="hover:text-teal-600 transition" href="#pricing">Plans</a>
+          <Link to="/login" className="bg-teal-600 text-white px-5 py-2 rounded-full hover:bg-teal-700 transition shadow-md hover:shadow-lg">
+            Login
+          </Link>
         </nav>
+
+        {/* Mobile menu button */}
+        <div className="md:hidden ml-auto">
+          <button
+            onClick={() => setOpen((s) => !s)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            className="p-2 rounded-md bg-white border border-teal-100 shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-teal-300"
+          >
+            <span className="sr-only">Open main menu</span>
+            <svg className="w-6 h-6 text-teal-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              {open ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile menu panel */}
+      <div id="mobile-menu" className={`${open ? "block" : "hidden"} md:hidden border-t border-teal-100 bg-white/98`}>
+        <div className="px-4 py-4 space-y-3">
+          <div>
+            <input
+              aria-label="Search game stats"
+              className="w-full rounded-full px-4 py-2 bg-teal-50 border border-teal-200 focus:outline-none focus:ring-2 focus:ring-teal-300 transition"
+              placeholder="Search players, matches..."
+            />
+          </div>
+          <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#features">Features</a>
+          <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#how">How It Works</a>
+          <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#pricing">Plans</a>
+          <div className="pt-2">
+            <Link to="/login" className="block w-full text-center bg-teal-600 text-white px-4 py-2 rounded-full hover:bg-teal-700 transition shadow-sm">Login</Link>
+          </div>
+        </div>
       </div>
     </header>
   );
