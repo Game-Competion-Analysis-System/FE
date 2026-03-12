@@ -5,7 +5,7 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const proxyTarget = env.VITE_PROXY_TARGET || "https://be-1-yq5e.onrender.com";
+  const proxyTarget = env.VITE_PROXY_TARGET || "https://swdaigame.onrender.com";
 
   return {
     plugins: [react()],
