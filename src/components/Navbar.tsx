@@ -1,8 +1,49 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { clearAuthUser, getAuthToken, getAuthUser, setAuthToken } from "@/lib/api";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
+  const [token, setToken] = useState<string | null>(() => getAuthToken());
+  const [user, setUser] = useState<any>(() => getAuthUser());
+
+  useEffect(() => {
+    const sync = () => {
+      setToken(getAuthToken());
+      setUser(getAuthUser());
+    };
+    window.addEventListener("auth:changed", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("auth:changed", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  const isAuthed = useMemo(() => !!token, [token]);
+  const displayName = useMemo(() => {
+    const u = user;
+    return (
+      u?.username ??
+      null
+    );
+  }, [user]);
+
+  const isAdmin = useMemo(() => {
+    const u = user as unknown;
+    if (!u || typeof u !== "object") return false;
+    const obj = u as Record<string, unknown>;
+    const role = obj.Role ?? obj.role;
+    return typeof role === "string" && role.trim().toLowerCase() === "admin";
+  }, [user]);
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    clearAuthUser();
+    setOpen(false);
+    navigate("/");
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md shadow-sm border-b border-teal-100">
@@ -29,9 +70,33 @@ const Navbar = () => {
           <a className="hover:text-teal-600 transition" href="#features">Features</a>
           <a className="hover:text-teal-600 transition" href="#how">How It Works</a>
           <a className="hover:text-teal-600 transition" href="#pricing">Plans</a>
-          <Link to="/login" className="bg-teal-600 text-white px-5 py-2 rounded-full hover:bg-teal-700 transition shadow-md hover:shadow-lg">
-            Login
-          </Link>
+          {isAuthed ? (
+            <div className="flex items-center gap-3">
+              <Link to="/history" className="text-teal-700 font-bold hover:text-teal-800 transition">
+                History
+              </Link>
+              {isAdmin ? (
+                <Link to="/admin/users" className="text-teal-700 font-bold hover:text-teal-800 transition">
+                  Admin
+                </Link>
+              ) : null}
+              {displayName ? (
+                <div className="max-w-[220px] truncate rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-teal-800 font-bold shadow-sm">
+                  {displayName}
+                </div>
+              ) : null}
+              <button
+                onClick={handleLogout}
+                className="border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link to="/login" className="bg-teal-600 text-white px-5 py-2 rounded-full hover:bg-teal-700 transition shadow-md hover:shadow-lg">
+              Login
+            </Link>
+          )}
         </nav>
 
         {/* Mobile menu button */}
@@ -68,7 +133,45 @@ const Navbar = () => {
           <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#how">How It Works</a>
           <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#pricing">Plans</a>
           <div className="pt-2">
-            <Link to="/login" className="block w-full text-center bg-teal-600 text-white px-4 py-2 rounded-full hover:bg-teal-700 transition shadow-sm">Login</Link>
+            {isAuthed ? (
+              <div className="space-y-2">
+                <Link
+                  to="/history"
+                  onClick={() => setOpen(false)}
+                  className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
+                >
+                  History
+                </Link>
+                {isAdmin ? (
+                  <Link
+                    to="/admin/users"
+                    onClick={() => setOpen(false)}
+                    className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
+                  >
+                    Admin
+                  </Link>
+                ) : null}
+                {displayName ? (
+                  <div className="w-full text-center rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 shadow-sm">
+                    {displayName}
+                  </div>
+                ) : null}
+                <button
+                  onClick={handleLogout}
+                  className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="block w-full text-center bg-teal-600 text-white px-4 py-2 rounded-full hover:bg-teal-700 transition shadow-sm"
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </div>

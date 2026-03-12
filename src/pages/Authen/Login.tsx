@@ -1,19 +1,47 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import FallBeamBackground from "@/components/lightswind/fall-beam-background";
+import { apiJson, setAuthToken, setAuthUser } from "@/lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic here
-    console.log("Login attempt:", { email, password, rememberMe });
-    // For now, just navigate to home
-    navigate("/");
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const res = await apiJson<unknown>("/auth/login", {
+        method: "POST",
+        body: { email, password },
+      });
+
+      const obj = res && typeof res === "object" ? (res as Record<string, unknown>) : null;
+      const token = obj ? (obj.Token ?? obj.token) : null;
+      const user = obj ? (obj.User ?? obj.user) : null;
+
+      if (!token || typeof token !== "string") {
+        throw new Error("Login response missing token");
+      }
+
+      setAuthToken(token);
+
+      if (user) setAuthUser(user, rememberMe);
+      const userObj = user && typeof user === "object" ? (user as Record<string, unknown>) : null;
+      const roleRaw = userObj ? (userObj.Role ?? userObj.role) : null;
+      const role = (typeof roleRaw === "string" ? roleRaw : "").trim().toLowerCase();
+      navigate(role === "admin" ? "/admin/users" : "/");
+    } catch (e: unknown) {
+      setAuthToken(null);
+      setError(e instanceof Error ? e.message : "Login failed");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -40,6 +68,11 @@ const Login = () => {
         {/* Login Form */}
         <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-10">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {error ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-semibold">
+                {error}
+              </div>
+            ) : null}
             {/* Email Field */}
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-gray-800 mb-2">
@@ -108,9 +141,10 @@ const Login = () => {
             {/* Submit Button */}
             <button
               type="submit"
+              disabled={isSubmitting}
               className="w-full mt-6 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold text-base py-4 px-6 rounded-xl hover:from-teal-600 hover:to-cyan-600 focus:ring-4 focus:ring-teal-200 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              Sign In
+              {isSubmitting ? "Signing in..." : "Sign In"}
             </button>
           </form>
 
@@ -155,9 +189,9 @@ const Login = () => {
           {/* Sign Up Link */}
           <p className="mt-8 text-center text-sm text-gray-600 font-medium">
             Don't have an account?{" "}
-            <a href="#" className="text-teal-600 hover:text-teal-700 font-bold hover:underline transition-all">
+            <Link to="/register" className="text-teal-600 hover:text-teal-700 font-bold hover:underline transition-all">
               Sign up
-            </a>
+            </Link>
           </p>
         </div>
 

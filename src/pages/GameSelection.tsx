@@ -1,122 +1,161 @@
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeft, ArrowRight, Sparkles, Smartphone, Swords } from "lucide-react";
 import FallBeamBackground from "@/components/lightswind/fall-beam-background";
+import { ApiError } from "@/lib/api";
+import { fetchGames, type Game } from "@/lib/games";
 
-interface GameOption {
-  id: string;
-  name: string;
-  description: string;
+type GameCard = {
   image: string;
-  icon: string;
-}
+  description: string;
+  icon: ReactNode;
+  tag: string;
+};
 
 const GameSelection = () => {
   const navigate = useNavigate();
+  const [games, setGames] = useState<Game[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const games: GameOption[] = [
-    {
-      id: "vlk2",
-      name: "Võ Lâm Truyền Kì 2.0",
-      description: "Phân tích chi tiết gameplay, nhân vật và kỹ năng",
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchGames({ signal: controller.signal })
+      .then((list) => {
+        setGames(Array.isArray(list) ? list : []);
+      })
+      .catch((e: unknown) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError(e instanceof ApiError ? e.message : e instanceof Error ? e.message : "Failed to load game list");
+        setGames([]);
+      })
+      .finally(() => setIsLoading(false));
+
+    return () => controller.abort();
+  }, []);
+
+  const cardFor = useMemo(() => {
+    const fallback: GameCard = {
       image: "https://images2.thanhnien.vn/528068263637045248/2025/8/6/vltk20-1-17544736359611649581292.jpg",
-      icon: "",
-    },
-    {
-      id: "vlk-mobile",
-      name: "Võ Lâm Truyền Kì Mobile",
-      description: "Phân tích chiến t huật và build nhân vật mobile",
-      image: "https://cdn.sforum.vn/sforum/wp-content/uploads/2021/04/VLTK-1-mobile-cover.png",
-      icon: "",
-    },
-  ];
+      description: "Analyze leaderboards and get strategy suggestions.",
+      icon: <Swords className="w-6 h-6 text-white" />,
+      tag: "Game",
+    };
 
-  const handleGameSelect = (gameId: string) => {
-    navigate(`/analyze?game=${gameId}`);
+    const byName: Record<string, GameCard> = {
+      "vltk mobile": {
+        image: "https://cdn.sforum.vn/sforum/wp-content/uploads/2021/04/VLTK-1-mobile-cover.png",
+        description: "Analyze tactics and builds for mobile.",
+        icon: <Smartphone className="w-6 h-6 text-white" />,
+        tag: "Mobile",
+      },
+      "vltk 2.0": {
+        image: "https://images2.thanhnien.vn/528068263637045248/2025/8/6/vltk20-1-17544736359611649581292.jpg",
+        description: "Analyze gameplay, characters, and skills in detail.",
+        icon: <Swords className="w-6 h-6 text-white" />,
+        tag: "PC MMORPG",
+      },
+    };
+
+    return (gameName: string): GameCard => byName[gameName.trim().toLowerCase()] ?? fallback;
+  }, []);
+
+  const handleGameSelect = (gameId: number) => {
+    navigate(`/server-selection?game=${encodeURIComponent(String(gameId))}`);
   };
 
   return (
-    <div className="min-h-screen relative bg-gradient-to-br from-slate-900 via-teal-900 to-slate-900 flex items-center justify-center px-4 py-8 overflow-hidden">
-      {/* Animated background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-teal-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse" style={{ animationDelay: "2s" }} />
-      </div>
-
-      {/* Fall Beam Background */}
+    <div className="min-h-screen relative bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 px-4 py-10 overflow-hidden">
       <FallBeamBackground lineCount={12} beamColorClass="cyan-400" />
 
-      {/* Content */}
-      <div className="relative z-20 max-w-6xl w-full">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <div className="inline-block mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-teal-400 to-cyan-400 text-white text-xs font-bold tracking-wide">
-             SELECT YOUR GAME
+      <div className="relative z-20 max-w-6xl mx-auto">
+        <div className="mb-10 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/")}
+            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white/85 px-4 py-2 text-sm font-bold text-gray-800 hover:bg-white transition shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 text-xs font-black text-teal-700/70">
+            <Sparkles className="w-4 h-4 text-teal-600" />
+            Remote API ready
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
+        </div>
+
+        <div className="text-center mb-14">
+          <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white text-xs font-black tracking-wide shadow-lg">
+            SELECT YOUR GAME
+          </div>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 mb-4 leading-tight">
             Choose Your Game
           </h1>
-          <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-            Select which Võ Lâm Truyền Kì version you want to analyze
+          <p className="text-gray-700 text-lg max-w-2xl mx-auto font-medium">
+            Choose a game to analyze
           </p>
         </div>
 
-        {/* Game Cards Grid */}
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          {games.map((game) => (
-            <button
-              key={game.id}
-              onClick={() => handleGameSelect(game.id)}
-              className="group relative h-80 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-slate-900"
-              style={{
-                backgroundImage: `url(${game.image})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-              }}
-            >
-              {/* Card border */}
-              <div className="absolute inset-0 border-2 border-transparent group-hover:border-cyan-400 transition-colors duration-300 rounded-2xl" />
+        <div className="grid md:grid-cols-2 gap-8">
+          {isLoading ? (
+            <div className="md:col-span-2 rounded-3xl border border-gray-200 bg-white/80 p-10 text-center text-gray-600 font-semibold">
+              Loading games…
+            </div>
+          ) : error ? (
+            <div className="md:col-span-2 rounded-3xl border border-red-200 bg-red-50 p-10 text-center text-red-700 font-bold">
+              {error}
+            </div>
+          ) : (
+            games.map((game) => {
+              const card = cardFor(game.gameName);
+              return (
+                <button
+                  key={game.gameId}
+                  onClick={() => handleGameSelect(game.gameId)}
+                  className="group relative rounded-3xl overflow-hidden text-left transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2 focus:ring-offset-transparent shadow-xl hover:shadow-2xl"
+                >
+                  <div className="absolute inset-0 bg-white/92 backdrop-blur-sm" />
+                  <div className="absolute inset-0 ring-1 ring-gray-200 group-hover:ring-teal-300 transition" />
 
-              {/* Content */}
-              <div className="relative z-10 h-full flex flex-col items-center justify-center p-8 bg-transparent transition-all duration-300">
-                {/* Icon */}
-                <div className="text-7xl mb-6 transform group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
-                  {game.icon}
-                </div>
+                  <div className="relative z-10">
+                    <div className="h-44 overflow-hidden">
+                      <img
+                        src={card.image}
+                        alt={game.gameName}
+                        className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                      />
+                    </div>
 
-                {/* Game Name */}
-                <h2 className="text-3xl font-bold text-white mb-3 text-center">
-                  {game.name}
-                </h2>
+                    <div className="p-8">
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="inline-flex items-center gap-3">
+                          <div className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 p-3 shadow-lg">
+                            {card.icon}
+                          </div>
+                          <span className="inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-black text-teal-800">
+                            {card.tag}
+                          </span>
+                        </div>
+                      </div>
 
-                {/* Description */}
-                <p className="text-gray-300 text-center mb-6 group-hover:text-gray-200 transition-colors">
-                  {game.description}
-                </p>
+                      <h2 className="text-3xl font-black text-gray-900 mb-2">{game.gameName}</h2>
+                      <p className="text-gray-600 mb-7 group-hover:text-gray-700 transition-colors max-w-md font-medium">
+                        {card.description}
+                      </p>
 
-                {/* CTA Button */}
-                <div className="mt-auto">
-                  <div className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-semibold group-hover:from-teal-400 group-hover:to-cyan-400 transition-all duration-300 shadow-lg group-hover:shadow-xl">
-                    <span>Analyze Now</span>
-                    <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
+                      <div className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-xl shadow-teal-500/15 group-hover:shadow-teal-500/25 transition">
+                        <span>Analyze</span>
+                        <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Back Button */}
-        <div className="flex justify-center">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 hover:border-white/40"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Home
-          </button>
+                </button>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

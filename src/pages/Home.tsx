@@ -6,12 +6,14 @@ import HowItWorks from "@/components/HowItWorks";
 import CTA from "@/components/CTA";
 import Footer from "@/components/Footer";
 import AnalysisResult from "@/components/AnalysisResult";
+import { getAuthToken } from "@/lib/api";
 
 const Home = () => {
   const navigate = useNavigate();
 
   const handleAnalyzeClick = () => {
-    navigate("/game-selection");
+    const token = getAuthToken();
+    navigate(token ? "/game-selection" : "/login");
   };
 
   return (
