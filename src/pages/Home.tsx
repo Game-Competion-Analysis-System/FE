@@ -17,10 +17,9 @@ const Home = () => {
   };
 
   return (
-    <div className="w-screen min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 text-gray-900 font-sans overflow-x-hidden">
+    <div className="w-full min-h-screen bg-gradient-to-br from-teal-50 via-white to-cyan-50 text-gray-900 font-sans overflow-x-hidden">
       <Navbar />
       <Hero onAnalyzeClick={handleAnalyzeClick} />
-        
       <AnalysisResult />
       <Features />
       <HowItWorks />

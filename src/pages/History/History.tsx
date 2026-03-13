@@ -8,6 +8,7 @@ import {
 import FallBeamBackground from "@/components/lightswind/fall-beam-background";
 import { ApiError, getAuthToken, getAuthUser } from "@/lib/api";
 import { getAnalysisMeta } from "@/lib/analysisMeta";
+import { fetchGames } from "@/lib/games";
 import { toast } from "@/hooks/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { deleteHistory, readHistory } from "./crud";
@@ -19,12 +20,33 @@ import type { AnalysisItem, LeaderboardEntry } from "./types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+const parseApiDate = (raw: string): Date | null => {
+  const s = raw.trim();
+  if (!s) return null;
+
+  // If backend returns an ISO string without timezone (e.g. 2026-03-13T01:49:00),
+  // assume it's UTC and append "Z" so the UI shows correct local time.
+  const looksIsoWithoutZone =
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?$/.test(s) &&
+    !/[zZ]$/.test(s) &&
+    !/[+-]\d{2}:\d{2}$/.test(s);
+
+  const isoUtc = looksIsoWithoutZone ? `${s}Z` : s;
+  const d = new Date(isoUtc);
+  if (isNaN(d.getTime())) return null;
+  return d;
+};
+
 const formatDate = (s: string) => {
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return "N/A";
+  const d = parseApiDate(s);
+  if (!d) return "N/A";
   return d.toLocaleString("vi-VN", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Ho_Chi_Minh",
   });
 };
 
@@ -89,6 +111,7 @@ const History = () => {
   const [items, setItems] = useState<AnalysisItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [gamesById, setGamesById] = useState<Map<number, string>>(new Map());
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -98,6 +121,35 @@ const History = () => {
   useEffect(() => {
     if (!getAuthToken()) navigate("/login");
   }, [navigate]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetchGames({ signal: controller.signal })
+      .then((list) => {
+        const map = new Map<number, string>();
+        for (const g of list) {
+          const name = g.gameName?.trim();
+          if (name) map.set(g.gameId, name);
+        }
+        setGamesById(map);
+      })
+      .catch(() => {
+        // ignore: History can still render using other fallbacks
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const resolveBeGameName = useMemo(() => {
+    return (raw: string | null): string | null => {
+      const v = raw?.trim();
+      if (!v) return null;
+      const id = Number(v);
+      if (!Number.isFinite(id)) return null;
+      return gamesById.get(id) ?? null;
+    };
+  }, [gamesById]);
 
   const handleDelete = async (analysisId: number) => {
     setDeletingId(analysisId);
@@ -173,6 +225,7 @@ const History = () => {
     if (!q) return sorted;
     return sorted.filter(item =>
       (metaGameNameById.get(item.analysisId) ?? "").toLowerCase().includes(q) ||
+      (resolveBeGameName(item.gameName) ?? "").toLowerCase().includes(q) ||
       (getGameDisplayName(item.gameName) ?? "").toLowerCase().includes(q) ||
       (item.gameName ?? "").toLowerCase().includes(q) ||
       (item.serverName ?? "").toLowerCase().includes(q) ||
@@ -180,7 +233,7 @@ const History = () => {
       String(item.analysisId).includes(q) ||
       item.leaderboard.some(e => e.playerName.toLowerCase().includes(q))
     );
-  }, [sorted, search, metaGameNameById]);
+  }, [sorted, search, metaGameNameById, resolveBeGameName]);
 
   const stats = useMemo(() => ({
     total: sorted.length,
@@ -349,10 +402,11 @@ const History = () => {
               const isOpen = openId === item.analysisId;
               const hasLeaderboard = item.leaderboard.length > 0;
               const showGuild = hasGuildData(item.leaderboard);
-              // Display name priority: gameName → eventName → fallback
+              // Display name priority: BE gameName (by id) → meta gameName → API gameName → fallback
               const metaGameName = metaGameNameById.get(item.analysisId) ?? null;
-              const gameDisplayName = metaGameName ?? getGameDisplayName(item.gameName);
-              const displayName = gameDisplayName ?? item.eventName ?? "Unknown";
+              const beGameName = resolveBeGameName(item.gameName);
+              const gameDisplayName = beGameName ?? metaGameName ?? getGameDisplayName(item.gameName);
+              const displayName = gameDisplayName ?? item.gameName ?? "Unknown";
               const top1 = item.leaderboard.find(e => e.rank === 1);
 
               return (
@@ -394,7 +448,7 @@ const History = () => {
                             {item.serverName}
                           </span>
                         )}
-                        {item.eventName && item.eventName !== item.gameName && (
+                        {item.eventName && item.eventName !== displayName && (
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-200 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
                             <Swords className="w-3 h-3" />
                             {item.eventName}
