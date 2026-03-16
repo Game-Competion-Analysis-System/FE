@@ -49,7 +49,7 @@ function toGame(value: unknown): Game | null {
 }
 
 function normalizeGameList(value: unknown): Game[] {
-  const raw =
+  const raw: unknown[] =
     Array.isArray(value)
       ? value
       : Array.isArray((value as any)?.data)
