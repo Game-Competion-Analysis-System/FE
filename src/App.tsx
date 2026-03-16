@@ -6,12 +6,14 @@ import GameSelection from "./pages/GameSelection";
 import ServerSelection from "./pages/ServerSelection";
 import Analyze from "./pages/Analyze";
 import History from "./pages/History/History";
-import AdminUsers from "./pages/AdminUsers";
+import AdminUsers from "./pages/admin/AdminUsers";
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminSection from "./pages/admin/AdminSection";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Profile from "./pages/Profile";
 import Toaster from "./components/Toaster";
+import Auto from "./pages/Auto";
+import Players from "./pages/Players";
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
         <Route path="/analyze" element={<Analyze />} />
         <Route path="/history" element={<History />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
+        <Route path="/auto" element={<Auto />} />
+        <Route path="/players" element={<Players />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminUsers />} />
           <Route path="users" element={<AdminUsers />} />

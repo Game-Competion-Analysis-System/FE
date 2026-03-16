@@ -21,10 +21,11 @@ interface AnalyzeScreenshotProps {
   onBack: () => void;
   selectedGame?: string;
   server?: string;
+  serverName?: string;
   gameName?: string;
 }
 
-const AnalyzeScreenshot = ({ onBack, selectedGame, server, gameName }: AnalyzeScreenshotProps) => {
+const AnalyzeScreenshot = ({ onBack, selectedGame, server, serverName, gameName }: AnalyzeScreenshotProps) => {
   const navigate = useNavigate();
   const [image, setImage] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -98,10 +99,13 @@ const AnalyzeScreenshot = ({ onBack, selectedGame, server, gameName }: AnalyzeSc
         const gameId = selectedGame?.trim() ? selectedGame.trim() : null;
         const trimmedGameName = gameName?.trim() ? gameName.trim() : null;
         const resolvedGameName = trimmedGameName && trimmedGameName !== "Game" ? trimmedGameName : null;
+        const resolvedServerName = serverName?.trim() ? serverName.trim() : null;
         saveAnalysisMeta(normalized.analysisId, {
           gameId,
           gameName: resolvedGameName,
           server: server?.trim() ? server.trim() : null,
+          serverId: server?.trim() ? server.trim() : null,
+          serverName: resolvedServerName,
         });
       }
       setAnalysisResult(result);

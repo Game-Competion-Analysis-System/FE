@@ -11,6 +11,7 @@ const Analyze = ({}: AnalyzeProps) => {
   const navigate = useNavigate();
   const gameId = searchParams.get("game");
   const server = searchParams.get("server");
+  const serverName = searchParams.get("serverName");
   const [gameName, setGameName] = useState<string>("Game");
 
   useEffect(() => {
@@ -46,6 +47,7 @@ const Analyze = ({}: AnalyzeProps) => {
       onBack={handleBack} 
       selectedGame={gameId || ""} 
       server={server || ""}
+      serverName={serverName || ""}
       gameName={gameName}
     />
   );

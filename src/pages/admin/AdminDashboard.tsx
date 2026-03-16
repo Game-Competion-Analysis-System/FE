@@ -131,8 +131,8 @@ const AdminDashboard = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const list = await readHistory();
-        setItems(list as AnalysisItem[]);
+        const res = await readHistory({ pageNumber: 1, pageSize: 200, sortBy: "analysisId", isDescending: true });
+        setItems(res.items as AnalysisItem[]);
       } catch (e: unknown) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
           navigate("/login");
@@ -192,6 +192,19 @@ const AdminDashboard = () => {
 
     return out.sort((a, b) => a.ts - b.ts);
   }, [items, selectedPlayer]);
+
+  const scoreDomain = useMemo(() => {
+    if (!series.length) return { min: 0, max: 0 };
+    const scores = series.map((s) => s.score);
+    const min = Math.min(...scores);
+    const max = Math.max(...scores);
+    const range = Math.max(1, max - min);
+    const pad = Math.max(1000, Math.round(range * 0.5));
+    return {
+      min: Math.max(0, min - pad),
+      max: max + pad,
+    };
+  }, [series]);
 
   const monthCompare = useMemo(() => {
     const now = new Date();
@@ -571,10 +584,11 @@ const AdminDashboard = () => {
                       tickLine={false}
                       width={72}
                       tickFormatter={v => Number(v).toLocaleString("vi-VN")}
+                      domain={[scoreDomain.min, scoreDomain.max]}
                     />
                     <Tooltip content={<CustomTooltip />} />
                     <Area
-                      type="monotone"
+                      type="linear"
                       dataKey="score"
                       stroke="url(#strokeGradient)"
                       strokeWidth={2.5}

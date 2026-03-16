@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Clock, FileText, ShieldAlert, Trophy,
-  ChevronDown, BarChart3, Sparkles, Search,
+  ChevronDown, BarChart3, Sparkles,
   TrendingUp, Medal, Swords, Users, Building2, Hash, Trash2
 } from "lucide-react";
 import FallBeamBackground from "@/components/lightswind/fall-beam-background";
@@ -104,10 +104,21 @@ const History = () => {
   const navigate = useNavigate();
   const pageSize = 10;
   const [items, setItems] = useState<AnalysisItem[] | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [hasPrevious, setHasPrevious] = useState(false);
+  const [hasNext, setHasNext] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [gamesById, setGamesById] = useState<Map<number, string>>(new Map());
-  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState("analysisId");
+  const [isDescending, setIsDescending] = useState(true);
+  const [startDateInput, setStartDateInput] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDateInput, setEndDateInput] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [gameNameInput, setGameNameInput] = useState("");
+  const [gameName, setGameName] = useState("");
   const [openId, setOpenId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
@@ -153,6 +164,7 @@ const History = () => {
     try {
       await deleteHistory(analysisId);
       setItems((prev) => (prev ? prev.filter((i) => i.analysisId !== analysisId) : prev));
+      setTotalCount((prev) => Math.max(0, prev - 1));
       setOpenId((prev) => (prev === analysisId ? null : prev));
       toast.success({
         title: "Record deleted",
@@ -180,8 +192,20 @@ const History = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const list = await readHistory();
-        setItems(list);
+        const res = await readHistory({
+          pageNumber: page,
+          pageSize,
+          sortBy: sortBy.trim() ? sortBy.trim() : undefined,
+          isDescending,
+          startDate: startDate.trim() ? startDate.trim() : undefined,
+          endDate: endDate.trim() ? endDate.trim() : undefined,
+          gameName: gameName.trim() ? gameName.trim() : undefined,
+        });
+        setItems(res.items);
+        setTotalCount(res.totalCount);
+        setTotalPages(res.totalPages);
+        setHasPrevious(res.hasPrevious);
+        setHasNext(res.hasNext);
       } catch (e: unknown) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
           navigate("/login");
@@ -194,17 +218,18 @@ const History = () => {
           description: msg,
         });
         setItems([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setHasPrevious(false);
+        setHasNext(false);
       } finally {
         setIsLoading(false);
       }
     };
     run();
-  }, [navigate]);
+  }, [navigate, page, pageSize, sortBy, isDescending, startDate, endDate, gameName]);
 
-  const sorted = useMemo(
-    () => [...(items ?? [])].sort((a, b) => b.analysisId - a.analysisId),
-    [items]
-  );
+  const list = items ?? [];
 
   const metaGameNameById = useMemo(() => {
     const map = new Map<number, string>();
@@ -216,44 +241,56 @@ const History = () => {
     return map;
   }, [items]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter(item =>
-      (metaGameNameById.get(item.analysisId) ?? "").toLowerCase().includes(q) ||
-      (resolveBeGameName(item.gameName) ?? "").toLowerCase().includes(q) ||
-      (getGameDisplayName(item.gameName) ?? "").toLowerCase().includes(q) ||
-      (item.gameName ?? "").toLowerCase().includes(q) ||
-      (item.serverName ?? "").toLowerCase().includes(q) ||
-      (item.eventName ?? "").toLowerCase().includes(q) ||
-      String(item.analysisId).includes(q) ||
-      item.leaderboard.some(e => e.playerName.toLowerCase().includes(q))
-    );
-  }, [sorted, search, metaGameNameById, resolveBeGameName]);
+  const metaServerIdById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const item of items ?? []) {
+      const meta = getAnalysisMeta(item.analysisId);
+      const id = meta?.serverId?.trim();
+      if (id) map.set(item.analysisId, id);
+    }
+    return map;
+  }, [items]);
+
+  const metaServerNameById = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const item of items ?? []) {
+      const meta = getAnalysisMeta(item.analysisId);
+      const name = meta?.serverName?.trim();
+      if (name) map.set(item.analysisId, name);
+    }
+    return map;
+  }, [items]);
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
-
-  const totalPages = useMemo(
-    () => Math.max(1, Math.ceil(filtered.length / pageSize)),
-    [filtered.length, pageSize]
-  );
+  }, [sortBy, isDescending, startDate, endDate, gameName]);
 
   useEffect(() => {
-    setPage((prev) => Math.min(Math.max(1, prev), totalPages));
-  }, [totalPages]);
+    const handle = setTimeout(() => {
+      setStartDate(startDateInput.trim());
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [startDateInput]);
 
-  const paged = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [filtered, page, pageSize]);
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setEndDate(endDateInput.trim());
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [endDateInput]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setGameName(gameNameInput.trim());
+    }, 500);
+    return () => clearTimeout(handle);
+  }, [gameNameInput]);
 
   const stats = useMemo(() => ({
-    total: sorted.length,
-    withData: sorted.filter(i => i.leaderboard.length > 0).length,
-    totalPlayers: sorted.reduce((acc, i) => acc + i.leaderboard.length, 0),
-  }), [sorted]);
+    total: totalCount,
+    withData: list.filter(i => i.leaderboard.length > 0).length,
+    totalPlayers: list.reduce((acc, i) => acc + i.leaderboard.length, 0),
+  }), [list, totalCount]);
 
   return (
     <div className="min-h-screen relative bg-[#0a0e1a] overflow-hidden">
@@ -334,13 +371,13 @@ const History = () => {
             Your Records
           </h1>
           <p className="mt-3 text-gray-400 font-medium">
-            {isLoading ? "Loading…" : `${sorted.length} total · showing ${paged.length} of ${filtered.length}`}
+            {isLoading ? "Loading…" : `${totalCount} total · showing ${list.length} of ${totalCount}`}
           </p>
         </div>
 
         {/* ── Stats ── */}
-        {!isLoading && sorted.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 mb-8">
+        {!isLoading && totalCount > 0 && (
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {[
               { icon: <FileText className="w-5 h-5 text-teal-200" />, label: "Total analyses", value: stats.total, bg: "from-teal-500/10 to-cyan-500/5", iconBg: "bg-teal-500/10 border border-teal-500/20" },
               { icon: <TrendingUp className="w-5 h-5 text-cyan-200" />, label: "With results", value: stats.withData, bg: "from-cyan-500/10 to-blue-500/5", iconBg: "bg-cyan-500/10 border border-cyan-500/20" },
@@ -363,24 +400,78 @@ const History = () => {
         )}
 
         {/* ── Search ── */}
-        {!isLoading && sorted.length > 0 && (
-          <div className="relative mb-6">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search by game, server, event, player…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full pl-11 pr-14 py-3.5 rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm text-sm font-semibold text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 shadow-sm transition-all"
-            />
-            {search && (
-              <button
-                onClick={() => setSearch("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 hover:text-white transition"
+        {!isLoading && totalCount > 0 && (
+          <div className="mb-6 rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Sort By
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm [&>option]:bg-[#0f1423] [&>option]:text-gray-200"
               >
-                Clear
-              </button>
-            )}
+                <option value="analysisId">analysisId</option>
+                <option value="processedTime">processedTime</option>
+                <option value="gameName">gameName</option>
+                <option value="serverName">serverName</option>
+              </select>
+              </div>
+              <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Order
+              </label>
+              <select
+                value={isDescending ? "desc" : "asc"}
+                onChange={(e) => setIsDescending(e.target.value === "desc")}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm [&>option]:bg-[#0f1423] [&>option]:text-gray-200"
+              >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!isLoading && totalCount > 0 && (
+          <div className="mb-8 rounded-3xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={startDateInput}
+                onChange={(e) => setStartDateInput(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm"
+              />
+              </div>
+              <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={endDateInput}
+                onChange={(e) => setEndDateInput(e.target.value)}
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm"
+              />
+              </div>
+              <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Game Name
+              </label>
+              <input
+                value={gameNameInput}
+                onChange={(e) => setGameNameInput(e.target.value)}
+                placeholder="GameName"
+                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm"
+              />
+              </div>
+            </div>
           </div>
         )}
 
@@ -400,21 +491,16 @@ const History = () => {
           <div className="space-y-4">
             {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : list.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-white/[0.10] bg-white/[0.03] p-16 text-center">
             <Trophy className="w-10 h-10 text-white/20 mx-auto mb-3" />
             <p className="font-bold text-gray-300">
-              {search ? "No results found" : "No analysis history yet."}
+              No analysis history yet.
             </p>
-            {search && (
-              <button onClick={() => setSearch("")} className="mt-3 text-sm text-teal-300 font-semibold hover:underline">
-                Clear filter
-              </button>
-            )}
           </div>
         ) : (
           <div className="space-y-3">
-            {paged.map((item) => {
+            {list.map((item) => {
               const isOpen = openId === item.analysisId;
               const hasLeaderboard = item.leaderboard.length > 0;
               const showGuild = hasGuildData(item.leaderboard);
@@ -424,6 +510,8 @@ const History = () => {
               const gameDisplayName = beGameName ?? metaGameName ?? getGameDisplayName(item.gameName);
               const displayName = gameDisplayName ?? item.gameName ?? "Unknown";
               const top1 = item.leaderboard.find(e => e.rank === 1);
+              const metaServerId = metaServerIdById.get(item.analysisId) ?? null;
+              const metaServerName = metaServerNameById.get(item.analysisId) ?? null;
 
               return (
                 <div
@@ -459,9 +547,14 @@ const History = () => {
                           <Clock className="w-3 h-3 text-gray-500" />
                           {formatDate(item.processedTime)}
                         </span>
-                        {item.serverName && (
+                        {(metaServerName || item.serverName) && (
                           <span className="text-xs font-semibold text-teal-200 bg-teal-500/10 border border-teal-500/20 px-2 py-0.5 rounded-full">
-                            {item.serverName}
+                            {metaServerName ?? item.serverName}
+                          </span>
+                        )}
+                        {metaServerId && (
+                          <span className="text-xs font-semibold text-cyan-200 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.5 rounded-full">
+                            Server ID: {metaServerId}
                           </span>
                         )}
                         {item.eventName && item.eventName !== displayName && (
@@ -531,10 +624,16 @@ const History = () => {
                             {gameDisplayName}
                           </div>
                         )}
-                        {item.serverName && (
+                        {(metaServerName || item.serverName) && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-semibold text-gray-200 shadow-sm">
                             <Hash className="w-3 h-3 text-cyan-300" />
-                            {item.serverName}
+                            {metaServerName ?? item.serverName}
+                          </div>
+                        )}
+                        {metaServerId && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs font-semibold text-gray-200 shadow-sm">
+                            <Hash className="w-3 h-3 text-cyan-300" />
+                            Server ID: {metaServerId}
                           </div>
                         )}
                         {item.eventName && (
@@ -648,29 +747,41 @@ const History = () => {
           </div>
         )}
 
-        {!isLoading && filtered.length > pageSize && (
+        {!isLoading && totalCount > pageSize && (
           <div className="mt-6 flex items-center justify-between gap-4">
             <button
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
+              disabled={!hasPrevious}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
-                page === 1
+                !hasPrevious
                   ? "border-white/[0.08] bg-white/[0.04] text-gray-500 cursor-not-allowed"
                   : "border-white/[0.10] bg-white/[0.06] text-gray-200 hover:bg-white/[0.10] hover:text-white"
               }`}
             >
               Prev
             </button>
-            <div className="text-xs font-bold text-gray-400">
-              Page {page} of {totalPages}
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
+              <span>Page</span>
+              <select
+                value={page}
+                onChange={(e) => setPage(Number(e.target.value))}
+                className="rounded-lg border border-white/[0.12] bg-white/[0.06] px-2 py-1 text-xs font-bold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30"
+              >
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <option key={p} value={p} className="bg-[#0f1423] text-gray-200">
+                    {p}
+                  </option>
+                ))}
+              </select>
+              <span>of {totalPages}</span>
             </div>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
+              disabled={!hasNext}
               className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
-                page >= totalPages
+                !hasNext
                   ? "border-white/[0.08] bg-white/[0.04] text-gray-500 cursor-not-allowed"
                   : "border-white/[0.10] bg-white/[0.06] text-gray-200 hover:bg-white/[0.10] hover:text-white"
               }`}

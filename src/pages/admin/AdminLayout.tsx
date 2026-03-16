@@ -6,6 +6,7 @@ import {
   Users,
 } from "lucide-react";
 import { clearAuthUser, getAuthToken, getAuthUser, setAuthToken } from "@/lib/api";
+import FallBeamBackground from "@/components/lightswind/fall-beam-background";
 
 const navItems = [
   { to: "/admin/users", label: "Users", icon: Users },
@@ -38,8 +39,16 @@ const AdminLayout = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#1f2630] text-gray-200 flex">
-      <aside className="w-[260px] shrink-0 border-r border-white/[0.06] bg-[#1b222c]">
+    <div className="min-h-screen bg-[#0a0e1a] text-gray-200 flex relative overflow-hidden">
+      {/* Ambient blobs — full page, matches History & Dashboard */}
+      <div className="pointer-events-none absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-teal-500/15 to-cyan-500/10 blur-[120px] z-0" />
+      <div className="pointer-events-none absolute top-1/2 -left-20 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-500/8 blur-[100px] z-0" />
+      <div className="pointer-events-none absolute bottom-0 right-1/4 w-[400px] h-[400px] rounded-full bg-gradient-to-br from-violet-500/8 to-fuchsia-500/5 blur-[100px] z-0" />
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <FallBeamBackground />
+      </div>
+
+      <aside className="relative z-10 w-[260px] shrink-0 border-r border-white/[0.06] bg-[#0a0e1a]/80 backdrop-blur-sm">
         <div className="px-5 py-5 border-b border-white/[0.06]">
           <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
@@ -62,8 +71,8 @@ const AdminLayout = () => {
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg px-3 py-2 transition ${
                     isActive
-                      ? "bg-[#2a3340] text-white shadow-inner"
-                      : "text-gray-300 hover:bg-[#242c36] hover:text-white"
+                      ? "bg-white/[0.08] text-white shadow-inner"
+                      : "text-gray-400 hover:bg-white/[0.05] hover:text-white"
                   }`
                 }
               >
@@ -75,8 +84,7 @@ const AdminLayout = () => {
         </nav>
       </aside>
 
-      <main className="flex-1 bg-gradient-to-b from-[#1f2630] to-[#171d26]">
-        
+      <main className="relative z-10 flex-1">
         <div className="px-6 py-8">
           <Outlet />
         </div>

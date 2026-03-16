@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, RefreshCw, Save, User } from "lucide-react";
-import FallBeamBackground from "@/components/lightswind/fall-beam-background";
+import { Mail, RefreshCw, Save, ShieldCheck, User } from "lucide-react";
+import UserPageShell from "@/components/UserPageShell";
 import { ApiError, apiJson, clearAuthUser, getAuthToken, getAuthUser, setAuthToken, setAuthUser } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
@@ -137,94 +137,105 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen relative bg-gradient-to-br from-teal-50 via-cyan-50 to-blue-50 px-4 py-10 overflow-hidden">
-      <FallBeamBackground lineCount={12} beamColorClass="cyan-400" />
-
-      <div className="relative z-20 max-w-4xl mx-auto">
-        <div className="mb-8 flex items-center justify-between gap-4 flex-wrap">
-          <button
-            onClick={() => navigate(-1)}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white/85 px-4 py-2 text-sm font-bold text-gray-800 hover:bg-white transition shadow-sm"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          
+    <UserPageShell
+      eyebrow="Profile"
+      title={`Manage your account as ${displayName}`}
+      description="Keep your identity and contact information up to date so the app can personalize analysis history and account-level actions consistently."
+      onBack={() => navigate(-1)}
+      actions={
+        <button
+          type="button"
+          onClick={load}
+          disabled={isLoading}
+          className="inline-flex items-center gap-2 rounded-2xl border border-teal-200 bg-white/90 px-4 py-2.5 text-sm font-black text-teal-700 shadow-sm transition hover:bg-white disabled:opacity-70"
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      }
+      aside={
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-lg">
+              <User className="h-6 w-6 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black text-slate-950">{displayName}</p>
+              <p className="truncate text-sm font-medium text-slate-500">{(profile?.email ?? form.email) || "No email yet"}</p>
+            </div>
+          </div>
+          <div className="rounded-3xl border border-teal-100 bg-teal-500/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">Role</p>
+            <p className="mt-2 text-2xl font-black text-slate-950">{profile?.role ?? "--"}</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-white/80 p-4">
+            <p className="text-sm font-black text-slate-900">Account status</p>
+            <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+              Profile data is synced from the authenticated backend account and can be refreshed any time.
+            </p>
+          </div>
+        </div>
+      }
+      contentClassName="max-w-5xl"
+    >
+      <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 shadow-[0_24px_80px_rgba(14,116,144,0.12)]">
+        <div className="border-b border-slate-100 px-6 py-6 sm:px-8">
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-teal-600">Account Details</p>
+          <h2 className="mt-2 text-2xl font-black text-slate-950">Profile settings</h2>
         </div>
 
-        <div className="rounded-3xl border border-gray-200 bg-white/90 shadow-2xl overflow-hidden">
-          <div className="px-8 py-7 border-b border-gray-100 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-teal-600 uppercase tracking-wide">Profile</p>
-                <h1 className="text-2xl sm:text-3xl font-black text-gray-900">{displayName}</h1>
-              </div>
+        <div className="p-6 sm:p-8">
+          {error ? (
+            <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {error}
             </div>
-            <button
-              onClick={load}
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-xl border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-black text-teal-700 hover:bg-teal-100 transition disabled:opacity-70"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
-          </div>
+          ) : null}
 
-          <div className="p-8">
-            {error ? (
-              <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 font-semibold">
-                {error}
-              </div>
-            ) : null}
-
-            {isLoading && !profile ? (
-              <div className="text-gray-600 font-semibold">Loading profile…</div>
-            ) : (
-              <form onSubmit={handleSave} className="grid sm:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">User ID</p>
-                  <p className="text-lg font-black text-gray-900">{profile?.userId ?? "—"}</p>
-                </div>
-                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5">
-                  <p className="text-xs font-black text-gray-500 uppercase tracking-wide mb-2">Role</p>
-                  <p className="text-lg font-black text-gray-900">{profile?.role ?? "—"}</p>
-                </div>
-
-                <div className="sm:col-span-2 rounded-2xl border border-gray-200 bg-white p-5">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wide mb-2">
+          {isLoading && !profile ? (
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-6 text-sm font-semibold text-slate-600">
+              Loading profile...
+            </div>
+          ) : (
+            <form onSubmit={handleSave} className="grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)]">
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <label className="mb-2 block text-xs font-black uppercase tracking-[0.22em] text-slate-500">
                     Username
                   </label>
-                  <input
-                    value={form.username}
-                    onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-teal-300 transition"
-                    placeholder="Username"
-                  />
+                  <div className="relative">
+                    <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={form.username}
+                      onChange={(e) => setForm((s) => ({ ...s, username: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm font-semibold text-slate-800 transition focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                      placeholder="Username"
+                    />
+                  </div>
                 </div>
 
-                <div className="sm:col-span-2 rounded-2xl border border-gray-200 bg-white p-5">
-                  <label className="block text-xs font-black text-gray-500 uppercase tracking-wide mb-2">
+                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                  <label className="mb-2 block text-xs font-black uppercase tracking-[0.22em] text-slate-500">
                     Email
                   </label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
-                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-teal-300 transition"
-                    placeholder="Email"
-                  />
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm font-semibold text-slate-800 transition focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-300"
+                      placeholder="Email"
+                    />
+                  </div>
                 </div>
 
-                <div className="sm:col-span-2 flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30 transition disabled:opacity-70"
+                    className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-teal-500/20 transition hover:shadow-teal-500/30 disabled:opacity-70"
                   >
-                    <Save className="w-4 h-4" />
+                    <Save className="h-4 w-4" />
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
                   <button
@@ -235,17 +246,37 @@ const Profile = () => {
                         email: profile?.email ?? "",
                       });
                     }}
-                    className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-black text-gray-700 hover:bg-gray-50 transition"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
                   >
                     Reset
                   </button>
                 </div>
-              </form>
-            )}
-          </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">User ID</p>
+                  <p className="mt-2 text-2xl font-black text-slate-950">{profile?.userId ?? "--"}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-5">
+                  <div className="flex items-center gap-2 text-slate-900">
+                    <ShieldCheck className="h-4 w-4 text-teal-600" />
+                    <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">Role</p>
+                  </div>
+                  <p className="mt-2 text-2xl font-black text-slate-950">{profile?.role ?? "--"}</p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 bg-white p-5">
+                  <p className="text-sm font-black text-slate-900">Profile summary</p>
+                  <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
+                    Changes made here update your backend profile and the local authenticated user cache used by the navbar.
+                  </p>
+                </div>
+              </div>
+            </form>
+          )}
         </div>
       </div>
-    </div>
+    </UserPageShell>
   );
 };
 

@@ -70,6 +70,12 @@ const Navbar = () => {
           <a className="hover:text-teal-600 transition" href="#features">Features</a>
           <a className="hover:text-teal-600 transition" href="#how">How It Works</a>
           <a className="hover:text-teal-600 transition" href="#pricing">Plans</a>
+          <Link to="/players" className="hover:text-teal-600 transition">
+            Player
+          </Link>
+          <Link to="/auto" className="hover:text-teal-600 transition">
+            Auto
+          </Link>
           {isAuthed ? (
             <div className="flex items-center gap-3">
               {!isAdmin ? (
@@ -82,7 +88,7 @@ const Navbar = () => {
               ) : null}
               {isAdmin ? (
                 <Link to="/admin" className="text-teal-700 font-bold hover:text-teal-800 transition">
-                  Feature
+                  Admin Panel
                 </Link>
               ) : null}
               {displayName ? (
@@ -140,6 +146,20 @@ const Navbar = () => {
           <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#features">Features</a>
           <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#how">How It Works</a>
           <a className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded" href="#pricing">Plans</a>
+          <Link
+            to="/players"
+            onClick={() => setOpen(false)}
+            className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded"
+          >
+            Player
+          </Link>
+          <Link
+            to="/auto"
+            onClick={() => setOpen(false)}
+            className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded"
+          >
+            Auto
+          </Link>
           <div className="pt-2">
             {isAuthed ? (
               <div className="space-y-2">

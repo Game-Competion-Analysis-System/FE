@@ -2,6 +2,8 @@ export type AnalysisMeta = {
   gameId: string | null;
   gameName: string | null;
   server: string | null;
+  serverId: string | null;
+  serverName: string | null;
   savedAt: string;
 };
 
