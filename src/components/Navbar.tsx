@@ -72,18 +72,26 @@ const Navbar = () => {
           <a className="hover:text-teal-600 transition" href="#pricing">Plans</a>
           {isAuthed ? (
             <div className="flex items-center gap-3">
-              <Link to="/history" className="text-teal-700 font-bold hover:text-teal-800 transition">
-                History
-              </Link>
+              {!isAdmin ? (
+                <Link
+                  to="/history"
+                  className="text-teal-700 font-bold hover:text-teal-800 transition"
+                >
+                  History
+                </Link>
+              ) : null}
               {isAdmin ? (
-                <Link to="/admin/users" className="text-teal-700 font-bold hover:text-teal-800 transition">
-                  Admin
+                <Link to="/admin" className="text-teal-700 font-bold hover:text-teal-800 transition">
+                  Feature
                 </Link>
               ) : null}
               {displayName ? (
-                <div className="max-w-[220px] truncate rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-teal-800 font-bold shadow-sm">
+                <Link
+                  to="/profile"
+                  className="max-w-[220px] truncate rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-teal-800 font-bold shadow-sm hover:bg-teal-100 transition"
+                >
                   {displayName}
-                </div>
+                </Link>
               ) : null}
               <button
                 onClick={handleLogout}
@@ -135,16 +143,18 @@ const Navbar = () => {
           <div className="pt-2">
             {isAuthed ? (
               <div className="space-y-2">
-                <Link
-                  to="/history"
-                  onClick={() => setOpen(false)}
-                  className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
-                >
-                  History
-                </Link>
+                {!isAdmin ? (
+                  <Link
+                    to="/history"
+                    onClick={() => setOpen(false)}
+                    className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
+                  >
+                    History
+                  </Link>
+                ) : null}
                 {isAdmin ? (
                   <Link
-                    to="/admin/users"
+                    to="/admin"
                     onClick={() => setOpen(false)}
                     className="block w-full text-center border border-teal-200 text-teal-700 bg-white px-4 py-2 rounded-full hover:bg-teal-50 transition shadow-sm"
                   >
@@ -152,9 +162,13 @@ const Navbar = () => {
                   </Link>
                 ) : null}
                 {displayName ? (
-                  <div className="w-full text-center rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 shadow-sm">
+                  <Link
+                    to="/profile"
+                    onClick={() => setOpen(false)}
+                    className="block w-full text-center rounded-full border border-teal-200 bg-teal-50 px-4 py-2 text-sm font-bold text-teal-800 shadow-sm hover:bg-teal-100 transition"
+                  >
                     {displayName}
-                  </div>
+                  </Link>
                 ) : null}
                 <button
                   onClick={handleLogout}

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   BarChart3,
   ShieldAlert,
   TrendingUp,
@@ -15,7 +14,6 @@ import {
   Zap,
   Star,
   Activity,
-  ChevronRight,
 } from "lucide-react";
 import {
   Area,
@@ -29,9 +27,10 @@ import {
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import FallBeamBackground from "@/components/lightswind/fall-beam-background";
-import { ApiError, apiJson, getAuthToken } from "@/lib/api";
+import { ApiError, getAuthToken } from "@/lib/api";
+import { readHistory } from "@/pages/History/crud";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// -- Types --------------------------------------------------------------------
 
 interface LeaderboardEntry {
   rank: number;
@@ -57,7 +56,7 @@ type ChartPoint = {
   rank: number;
 };
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// -- Helpers ------------------------------------------------------------------
 
 const fmtScore = (n: number) => n.toLocaleString("vi-VN");
 
@@ -84,7 +83,7 @@ const CustomTooltip = ({ active, payload }: any) => {
         <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
         <p className="font-black text-white text-lg tabular-nums">{fmtScore(p.score)}</p>
       </div>
-      <p className="text-gray-400 text-xs">{p.label} · Analysis #{p.analysisId}</p>
+      <p className="text-gray-400 text-xs">{p.label} � Analysis #{p.analysisId}</p>
       <div className="mt-2 pt-2 border-t border-white/10 flex items-center gap-1.5">
         <Trophy className="w-3 h-3 text-amber-400" />
         <p className="text-amber-400 text-xs font-bold">Rank #{p.rank}</p>
@@ -113,9 +112,9 @@ const statIconBg = [
   "bg-amber-500/10 text-amber-600",
 ];
 
-// ── Component ────────────────────────────────────────────────────────────────
+// -- Component ----------------------------------------------------------------
 
-const Dashboard = () => {
+const AdminDashboard = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<AnalysisItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -132,12 +131,7 @@ const Dashboard = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const data = await apiJson<unknown>("/ai", { method: "GET" });
-        const list = Array.isArray(data)
-          ? data
-          : Array.isArray((data as any)?.data)
-            ? (data as any).data
-            : [];
+        const list = await readHistory();
         setItems(list as AnalysisItem[]);
       } catch (e: unknown) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
@@ -199,6 +193,64 @@ const Dashboard = () => {
     return out.sort((a, b) => a.ts - b.ts);
   }, [items, selectedPlayer]);
 
+  const monthCompare = useMemo(() => {
+    const now = new Date();
+    const startThis = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const startNext = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    let thisScore = 0;
+    let prevScore = 0;
+
+    const needle = selectedPlayer.trim().toLowerCase();
+
+    for (const item of items ?? []) {
+      const ts = Date.parse(item.processedTime);
+      if (!Number.isFinite(ts)) continue;
+
+      let sumScore = 0;
+      if (needle) {
+        const entry = (item.leaderboard ?? []).find(
+          (e) => e.playerName.trim().toLowerCase() === needle
+        );
+        if (!entry) continue;
+        sumScore = entry.score ?? 0;
+      } else {
+        for (const entry of item.leaderboard ?? []) {
+          sumScore += entry.score ?? 0;
+        }
+      }
+
+      if (ts >= startThis.getTime() && ts < startNext.getTime()) {
+        thisScore += sumScore;
+      } else if (ts >= startPrev.getTime() && ts < startThis.getTime()) {
+        prevScore += sumScore;
+      }
+    }
+
+    const delta = thisScore - prevScore;
+    const pct = prevScore > 0 ? (delta / prevScore) * 100 : null;
+    return { thisScore, prevScore, delta, pct };
+  }, [items, selectedPlayer]);
+
+  const leaderboardAgg = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const item of items ?? []) {
+      for (const entry of item.leaderboard ?? []) {
+        const name = entry.playerName?.trim();
+        if (!name) continue;
+        totals.set(name, (totals.get(name) ?? 0) + (entry.score ?? 0));
+      }
+    }
+    const list = [...totals.entries()]
+      .map(([playerName, totalScore]) => ({ playerName, totalScore }))
+      .sort((a, b) => b.totalScore - a.totalScore);
+
+    const topPlayer = list[0] ?? null;
+    const totalScore = list.reduce((acc, p) => acc + p.totalScore, 0);
+    return { list, topPlayer, totalScore };
+  }, [items]);
+
   const stats = useMemo(() => {
     if (series.length < 2) return null;
     const first = series[0].score;
@@ -223,7 +275,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen relative bg-[#0a0e1a] overflow-hidden">
-      {/* ── Ambient background ── */}
+      {/* -- Ambient background -- */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-teal-500/15 to-cyan-500/10 blur-[120px]" />
         <div className="absolute top-1/2 -left-60 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-500/8 blur-[100px]" />
@@ -232,31 +284,11 @@ const Dashboard = () => {
       </div>
       <FallBeamBackground lineCount={8} beamColorClass="cyan-400" />
 
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0a0e1a]/80 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Back
-          </button>
-          <div className="flex-1" />
-          <Link
-            to="/history"
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            <Clock className="w-4 h-4" />
-            History
-            <ChevronRight className="w-3 h-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </div>
-      </header>
+  
 
       <div className="relative z-20 max-w-7xl mx-auto px-6 py-10 lg:py-14">
 
-        {/* ── Hero Section ── */}
+        {/* -- Hero Section -- */}
         <motion.div
           initial="hidden"
           animate="visible"
@@ -279,10 +311,10 @@ const Dashboard = () => {
               {isLoading ? (
                 <span className="inline-flex items-center gap-2">
                   <span className="w-3 h-3 border-2 border-teal-500/30 border-t-teal-400 rounded-full animate-spin" />
-                  Loading…
+                  Loading�
                 </span>
               ) : (
-                <span>{players.length} players · {(items ?? []).length} analyses</span>
+                <span>{players.length} players � {(items ?? []).length} analyses</span>
               )}
             </p>
           </motion.div>
@@ -296,7 +328,7 @@ const Dashboard = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
               <input
                 type="text"
-                placeholder="Search player…"
+                placeholder="Search player�"
                 value={searchPlayer}
                 onChange={e => setSearchPlayer(e.target.value)}
                 className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm transition-all"
@@ -322,7 +354,7 @@ const Dashboard = () => {
           </motion.div>
         </motion.div>
 
-        {/* ── Error ── */}
+        {/* -- Error -- */}
         <AnimatePresence>
           {error && (
             <motion.div
@@ -340,7 +372,7 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* ── Stats Cards ── */}
+        {/* -- Stats Cards -- */}
         <AnimatePresence>
           {stats && (
             <motion.div
@@ -382,7 +414,72 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* ── Chart Card ── */}
+        {/* -- Month Compare -- */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-8">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              This month score
+            </p>
+            <p className="text-3xl font-black text-white tabular-nums mt-2">
+              {fmtScore(monthCompare.thisScore)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              Last month score
+            </p>
+            <p className="text-3xl font-black text-white tabular-nums mt-2">
+              {fmtScore(monthCompare.prevScore)}
+            </p>
+            <div className="mt-2 text-xs font-bold">
+              <span className={
+                monthCompare.delta > 0
+                  ? "text-emerald-400"
+                  : monthCompare.delta < 0
+                  ? "text-red-400"
+                  : "text-gray-400"
+              }>
+                {monthCompare.delta >= 0 ? "+" : ""}{fmtScore(monthCompare.delta)}
+              </span>
+              {monthCompare.pct != null ? (
+                <span className="text-gray-500 ml-2">({monthCompare.pct >= 0 ? "+" : ""}{monthCompare.pct.toFixed(1)}%)</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        {/* -- Aggregated Stats -- */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              Total score (all players)
+            </p>
+            <p className="text-3xl font-black text-white tabular-nums mt-2">
+              {fmtScore(leaderboardAgg.totalScore)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              Top player
+            </p>
+            <p className="text-2xl font-black text-white mt-2 truncate">
+              {leaderboardAgg.topPlayer?.playerName ?? "—"}
+            </p>
+            <p className="text-sm text-teal-400 font-bold tabular-nums mt-1">
+              {leaderboardAgg.topPlayer ? fmtScore(leaderboardAgg.topPlayer.totalScore) : "—"}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5">
+            <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              Total players
+            </p>
+            <p className="text-3xl font-black text-white tabular-nums mt-2">
+              {leaderboardAgg.list.length}
+            </p>
+          </div>
+        </div>
+
+        {/* -- Chart Card -- */}
         <motion.div
           variants={scaleIn}
           initial="hidden"
@@ -429,7 +526,7 @@ const Dashboard = () => {
                     <div className="w-6 h-6 border-2 border-cyan-500/20 border-b-cyan-400 rounded-full animate-spin" style={{ animationDirection: "reverse" }} />
                   </div>
                 </div>
-                <p className="text-gray-500 font-medium text-sm">Loading data…</p>
+                <p className="text-gray-500 font-medium text-sm">Loading data�</p>
               </div>
             ) : series.length === 0 ? (
               <div className="h-[380px] flex flex-col items-center justify-center gap-4">
@@ -492,7 +589,7 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* ── Appearances table ── */}
+        {/* -- Appearances table -- */}
         <AnimatePresence>
           {series.length > 0 && (
             <motion.div
@@ -560,10 +657,52 @@ const Dashboard = () => {
           )}
         </AnimatePresence>
 
+        {/* -- Leaderboard Table -- */}
+        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-white/[0.06] flex items-center gap-3">
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-500/10">
+              <Trophy className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Leaderboard (Total Score)</p>
+              <p className="text-xs text-gray-500 mt-0.5">Top players by total score</p>
+            </div>
+          </div>
+          {leaderboardAgg.list.length === 0 ? (
+            <div className="p-8 text-gray-500 text-sm">No leaderboard data.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/[0.04]">
+                    <th className="px-6 py-4 text-left">Rank</th>
+                    <th className="px-6 py-4 text-left">Player</th>
+                    <th className="px-6 py-4 text-right">Total Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leaderboardAgg.list.slice(0, 10).map((row, idx) => (
+                    <tr
+                      key={row.playerName}
+                      className="border-t border-white/[0.03] hover:bg-white/[0.03] transition-colors duration-200"
+                    >
+                      <td className="px-6 py-4 font-black text-gray-300">#{idx + 1}</td>
+                      <td className="px-6 py-4 text-gray-200 font-semibold">{row.playerName}</td>
+                      <td className="px-6 py-4 text-right font-black text-teal-400 tabular-nums">
+                        {fmtScore(row.totalScore)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
         <div className="h-20" />
       </div>
     </div>
   );
 };
 
-export default Dashboard;
+export default AdminDashboard;

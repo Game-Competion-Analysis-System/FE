@@ -14,12 +14,6 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { deleteHistory, readHistory } from "./crud";
 import type { AnalysisItem, LeaderboardEntry } from "./types";
 
-// ── Types (matches new API shape) ────────────────────────────────────────────
-
-
-
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
 const parseApiDate = (raw: string): Date | null => {
   const s = raw.trim();
   if (!s) return null;
@@ -108,6 +102,7 @@ const SkeletonCard = () => (
 
 const History = () => {
   const navigate = useNavigate();
+  const pageSize = 10;
   const [items, setItems] = useState<AnalysisItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -116,6 +111,7 @@ const History = () => {
   const [openId, setOpenId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
   const isAdmin = getRole(getAuthUser()) === "admin";
 
   useEffect(() => {
@@ -235,6 +231,24 @@ const History = () => {
     );
   }, [sorted, search, metaGameNameById, resolveBeGameName]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(filtered.length / pageSize)),
+    [filtered.length, pageSize]
+  );
+
+  useEffect(() => {
+    setPage((prev) => Math.min(Math.max(1, prev), totalPages));
+  }, [totalPages]);
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, page, pageSize]);
+
   const stats = useMemo(() => ({
     total: sorted.length,
     withData: sorted.filter(i => i.leaderboard.length > 0).length,
@@ -281,13 +295,15 @@ const History = () => {
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0a0e1a]/80 backdrop-blur-2xl">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Back
-          </button>
+          {!isAdmin ? (
+            <button
+              onClick={() => navigate(-1)}
+              className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
+            >
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              Back
+            </button>
+          ) : null}
           <div className="flex-1" />
           <Link
             to="/dashboard"
@@ -318,7 +334,7 @@ const History = () => {
             Your Records
           </h1>
           <p className="mt-3 text-gray-400 font-medium">
-            {isLoading ? "Loading…" : `${sorted.length} total · ${filtered.length} shown`}
+            {isLoading ? "Loading…" : `${sorted.length} total · showing ${paged.length} of ${filtered.length}`}
           </p>
         </div>
 
@@ -398,7 +414,7 @@ const History = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map((item) => {
+            {paged.map((item) => {
               const isOpen = openId === item.analysisId;
               const hasLeaderboard = item.leaderboard.length > 0;
               const showGuild = hasGuildData(item.leaderboard);
@@ -629,6 +645,38 @@ const History = () => {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {!isLoading && filtered.length > pageSize && (
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
+                page === 1
+                  ? "border-white/[0.08] bg-white/[0.04] text-gray-500 cursor-not-allowed"
+                  : "border-white/[0.10] bg-white/[0.06] text-gray-200 hover:bg-white/[0.10] hover:text-white"
+              }`}
+            >
+              Prev
+            </button>
+            <div className="text-xs font-bold text-gray-400">
+              Page {page} of {totalPages}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
+                page >= totalPages
+                  ? "border-white/[0.08] bg-white/[0.04] text-gray-500 cursor-not-allowed"
+                  : "border-white/[0.10] bg-white/[0.06] text-gray-200 hover:bg-white/[0.10] hover:text-white"
+              }`}
+            >
+              Next
+            </button>
           </div>
         )}
 

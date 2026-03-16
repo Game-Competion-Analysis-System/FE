@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, ShieldAlert, Trash2, Users } from "lucide-react";
-import FallBeamBackground from "@/components/lightswind/fall-beam-background";
+import { useNavigate } from "react-router-dom";
+import { ShieldAlert, Trash2, Users } from "lucide-react";
 import { ApiError, apiJson, clearAuthUser, getAuthToken, getAuthUser, setAuthToken } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -60,6 +59,20 @@ function normalizeUserRow(input: unknown): UserRow {
   };
 }
 
+function normalizeUserList(input: unknown): UserRow[] {
+  const raw =
+    Array.isArray(input)
+      ? input
+      : Array.isArray((input as any)?.items)
+        ? (input as any).items
+        : Array.isArray((input as any)?.data)
+          ? (input as any).data
+          : Array.isArray((input as any)?.result)
+            ? (input as any).result
+            : [];
+  return raw.map(normalizeUserRow);
+}
+
 const AdminUsers = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<UserRow[] | null>(null);
@@ -86,7 +99,7 @@ const AdminUsers = () => {
     setError(null);
     try {
       const data = await apiJson<unknown>("/Users", { method: "GET" });
-      setItems(Array.isArray(data) ? (data as unknown[]).map(normalizeUserRow) : []);
+      setItems(normalizeUserList(data));
     } catch (e: unknown) {
       if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
         setAuthToken(null);
@@ -147,7 +160,7 @@ const AdminUsers = () => {
   };
 
   return (
-    <div className="min-h-screen relative bg-[#0a0e1a] overflow-hidden">
+    <div className="relative">
       <ConfirmDialog
         open={confirmUserId != null}
         title={confirmUserId != null ? `Delete user #${confirmUserId}?` : "Delete user?"}
@@ -163,40 +176,7 @@ const AdminUsers = () => {
           runDelete(id);
         }}
       />
-      {/* ── Ambient background ── */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -top-40 -right-40 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-teal-500/15 to-cyan-500/10 blur-[120px]" />
-        <div className="absolute top-1/2 -left-60 w-[520px] h-[520px] rounded-full bg-gradient-to-br from-blue-500/10 to-indigo-500/8 blur-[110px]" />
-        <div className="absolute bottom-0 right-1/4 w-[420px] h-[420px] rounded-full bg-gradient-to-br from-violet-500/8 to-fuchsia-500/5 blur-[110px]" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:64px_64px]" />
-      </div>
-      <FallBeamBackground lineCount={8} beamColorClass="cyan-400" />
-
-      <header className="sticky top-0 z-30 border-b border-white/[0.06] bg-[#0a0e1a]/80 backdrop-blur-2xl">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </button>
-          <Link
-            to="/dashboard"
-            className="group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            Dashboard
-          </Link>
-          <Link
-            to="/history"
-            className="ml-auto group inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-gray-300 hover:bg-white/[0.08] hover:text-white hover:border-teal-500/30 transition-all duration-300"
-          >
-            History
-          </Link>
-        </div>
-      </header>
-
-      <div className="relative z-20 max-w-7xl mx-auto px-6 py-10 lg:py-14">
+      <div className="relative z-20 max-w-7xl mx-auto">
         <div className="mb-8 flex items-end justify-between gap-6 flex-wrap">
           <div>
             <div className="inline-flex items-center gap-2 mb-3 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-teal-200 text-xs font-black tracking-wide shadow-sm">
@@ -285,3 +265,4 @@ const AdminUsers = () => {
 };
 
 export default AdminUsers;
+

@@ -30,7 +30,10 @@ function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
 
 export function getAuthToken() {
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY);
+    const raw = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!raw) return null;
+    const cleaned = raw.replace(/[\r\n]+/g, "").trim();
+    return cleaned.length > 0 ? cleaned : null;
   } catch {
     return null;
   }
@@ -47,8 +50,13 @@ export function getAuthUser(): any | null {
 
 export function setAuthToken(token: string | null) {
   try {
-    if (!token) localStorage.removeItem(AUTH_TOKEN_KEY);
-    else localStorage.setItem(AUTH_TOKEN_KEY, token);
+    if (!token) {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+    } else {
+      const cleaned = token.replace(/[\r\n]+/g, "").trim();
+      if (cleaned.length === 0) localStorage.removeItem(AUTH_TOKEN_KEY);
+      else localStorage.setItem(AUTH_TOKEN_KEY, cleaned);
+    }
   } catch {
     // ignore
   }
