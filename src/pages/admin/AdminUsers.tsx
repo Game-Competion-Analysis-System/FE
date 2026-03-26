@@ -126,16 +126,8 @@ const AdminUsers = () => {
 
   // Filter state (inputs — debounced → committed values below)
   const [searchInput, setSearchInput] = useState("");
-  const [filterInput, setFilterInput] = useState("");
-  const [gameNameInput, setGameNameInput] = useState("");
-  const [startDateInput, setStartDateInput] = useState("");
-  const [endDateInput, setEndDateInput] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filter, setFilter] = useState("");
-  const [gameName, setGameName] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
 
   const [sortBy, setSortBy] = useState<SortField>("userid");
   const [isDescending, setIsDescending] = useState(false);
@@ -144,6 +136,12 @@ const AdminUsers = () => {
   const [error, setError] = useState<string | null>(null);
   const [confirmUserId, setConfirmUserId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [createUsername, setCreateUsername] = useState("");
+  const [createEmail, setCreateEmail] = useState("");
+  const [createPassword, setCreatePassword] = useState("");
+  const [createRole, setCreateRole] = useState("admin");
+  const [isCreating, setIsCreating] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   // Auth guard
   useEffect(() => {
@@ -159,26 +157,6 @@ const AdminUsers = () => {
     return () => clearTimeout(h);
   }, [searchInput]);
 
-  useEffect(() => {
-    const h = setTimeout(() => { setFilter(filterInput.trim()); setPage(1); }, 400);
-    return () => clearTimeout(h);
-  }, [filterInput]);
-
-  useEffect(() => {
-    const h = setTimeout(() => { setGameName(gameNameInput.trim()); setPage(1); }, 400);
-    return () => clearTimeout(h);
-  }, [gameNameInput]);
-
-  useEffect(() => {
-    const h = setTimeout(() => { setStartDate(startDateInput.trim()); setPage(1); }, 400);
-    return () => clearTimeout(h);
-  }, [startDateInput]);
-
-  useEffect(() => {
-    const h = setTimeout(() => { setEndDate(endDateInput.trim()); setPage(1); }, 400);
-    return () => clearTimeout(h);
-  }, [endDateInput]);
-
   // Reset page on sort change
   useEffect(() => { setPage(1); }, [sortBy, isDescending]);
 
@@ -193,10 +171,6 @@ const AdminUsers = () => {
       if (searchTerm) params.set("SearchTerm", searchTerm);
       if (sortBy) params.set("SortBy", sortBy);
       params.set("IsDescending", String(isDescending));
-      if (filter) params.set("Filter", filter);
-      if (startDate) params.set("StartDate", startDate);
-      if (endDate) params.set("EndDate", endDate);
-      if (gameName) params.set("GameName", gameName);
 
       const data = await apiJson<unknown>(`/Users?${params.toString()}`, { method: "GET" });
       const res = normalizeUserList(data);
@@ -219,7 +193,7 @@ const AdminUsers = () => {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ },
-    [page, searchTerm, sortBy, isDescending, filter, startDate, endDate, gameName]);
+    [page, searchTerm, sortBy, isDescending]);
 
   const runDelete = async (userId: number) => {
     setDeletingId(userId);
@@ -240,12 +214,77 @@ const AdminUsers = () => {
     }
   };
 
-  const clearFilters = () => {
-    setSearchInput(""); setFilterInput(""); setGameNameInput("");
-    setStartDateInput(""); setEndDateInput("");
+
+  const runCreate = async () => {
+    const username = createUsername.trim();
+    const email = createEmail.trim();
+    const password = createPassword;
+    const role = createRole.trim();
+
+    if (!username || !email || !password || !role) {
+      toast.destructive({ title: "Missing fields", description: "Please fill in all fields." });
+      return;
+    }
+
+    setIsCreating(true);
+    setError(null);
+    try {
+      const payloadCandidates: Array<Record<string, unknown>> = [
+        { username, email, password, role },
+        { Username: username, Email: email, Password: password, Role: role },
+        { userName: username, email, password, role },
+        { UserName: username, Email: email, Password: password, Role: role },
+      ];
+
+      let createError: unknown = null;
+      let created = false;
+
+      for (const body of payloadCandidates) {
+        try {
+          await apiJson<unknown>("/Users", { method: "POST", body });
+          created = true;
+          break;
+        } catch (err: unknown) {
+          createError = err;
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            throw err;
+          }
+        }
+      }
+
+      if (!created) {
+        throw createError ?? new Error("Create failed");
+      }
+
+      toast.success({ title: "User created", description: `${username} (${role})` });
+      setCreateUsername("");
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateRole("admin");
+      setCreateOpen(false);
+      load();
+    } catch (e: unknown) {
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        setAuthToken(null); clearAuthUser(); navigate("/login"); return;
+      }
+      const msg = e instanceof Error ? e.message : "Create failed";
+      setError(msg);
+      toast.destructive({ title: "Create failed", description: msg });
+      // Clear fields on error too
+      setCreateUsername("");
+      setCreateEmail("");
+      setCreatePassword("");
+      setCreateRole("admin");
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const hasActiveFilters = searchInput || filterInput || gameNameInput || startDateInput || endDateInput;
+  const clearFilters = () => {
+    setSearchInput("");
+  };
+
+  const hasActiveFilters = searchInput;
 
   return (
     <div className="relative">
@@ -266,6 +305,113 @@ const AdminUsers = () => {
         }}
       />
 
+      {createOpen ? (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center px-4"
+          role="dialog"
+          aria-modal="true"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !isCreating) setCreateOpen(false);
+          }}
+        >
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative w-full max-w-2xl rounded-3xl border border-white/[0.10] bg-[#0a0e1a]/90 backdrop-blur-2xl shadow-2xl shadow-black/40 overflow-hidden">
+            <div className="p-5 sm:p-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-base sm:text-lg font-black text-white leading-snug">Create User</p>
+                <p className="mt-1 text-sm font-semibold text-gray-300 leading-snug">Fill in the details below.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreateOpen(false);
+                  setCreateUsername("");
+                  setCreateEmail("");
+                  setCreatePassword("");
+                  setCreateRole("admin");
+                }}
+                className="shrink-0 rounded-xl border border-white/[0.10] bg-white/[0.04] p-2 text-gray-200 hover:bg-white/[0.08] transition"
+                aria-label="Close"
+                disabled={isCreating}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">Username</label>
+                  <input
+                    value={createUsername}
+                    onChange={(e) => setCreateUsername(e.target.value)}
+                    placeholder="username"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">Email</label>
+                  <input
+                    type="email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">Password</label>
+                  <input
+                    type="password"
+                    value={createPassword}
+                    onChange={(e) => setCreatePassword(e.target.value)}
+                    placeholder="password"
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-100 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1.5">Role</label>
+                  <select
+                    value={createRole}
+                    onChange={(e) => setCreateRole(e.target.value)}
+                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500/30 [&>option]:bg-[#1b222c] transition"
+                  >
+                    <option value="admin">admin</option>
+                    <option value="user">user</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateOpen(false);
+                    setCreateUsername("");
+                    setCreateEmail("");
+                    setCreatePassword("");
+                    setCreateRole("admin");
+                  }}
+                  className="rounded-2xl border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-sm font-black text-gray-200 hover:bg-white/[0.08] transition"
+                  disabled={isCreating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={runCreate}
+                  disabled={isCreating}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-teal-400/30 bg-teal-400/10 px-4 py-2.5 text-sm font-black text-teal-100 hover:bg-teal-400/20 hover:border-teal-300/50 transition disabled:opacity-60"
+                >
+                  {isCreating ? "Creating..." : "Create User"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+
       {/* ── Header ── */}
       <div className="mb-6 flex items-end justify-between gap-4 flex-wrap">
         <div>
@@ -278,15 +424,30 @@ const AdminUsers = () => {
             {isLoading ? "Loading…" : `${totalCount} user(s) total`}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={load}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-black text-gray-200 hover:bg-white/[0.08] transition disabled:opacity-60"
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setCreateUsername("");
+              setCreateEmail("");
+              setCreatePassword("");
+              setCreateRole("admin");
+              setCreateOpen(true);
+            }}
+            className="inline-flex items-center gap-2 rounded-2xl border border-teal-400/30 bg-teal-400/10 px-4 py-2.5 text-sm font-black text-teal-100 hover:bg-teal-400/20 hover:border-teal-300/50 transition"
+          >
+            Create User
+          </button>
+          <button
+            type="button"
+            onClick={load}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-sm font-black text-gray-200 hover:bg-white/[0.08] transition disabled:opacity-60"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Filters ── */}
@@ -312,6 +473,7 @@ const AdminUsers = () => {
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
               <input
+                autoFocus={false}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="ID / username / email..."
@@ -323,26 +485,8 @@ const AdminUsers = () => {
           
         </div>
 
-        {/* Row 2: Start Date + End Date + Sort */}
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1.5">Start Date</label>
-            <input
-              type="date"
-              value={startDateInput}
-              onChange={(e) => setStartDateInput(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 transition"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1.5">End Date</label>
-            <input
-              type="date"
-              value={endDateInput}
-              onChange={(e) => setEndDateInput(e.target.value)}
-              className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm font-semibold text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 transition"
-            />
-          </div>
+        {/* Row 2: Sort */}
+        <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1.5">Sort By</label>
             <select
@@ -383,7 +527,7 @@ const AdminUsers = () => {
         <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sm font-black text-white">
             Users
-            {(searchTerm || filter || gameName || startDate || endDate) && (
+            {searchTerm && (
               <span className="ml-2 text-xs font-bold text-teal-300">— filtered</span>
             )}
           </p>
@@ -429,12 +573,13 @@ const AdminUsers = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.map((u) => {
+                {items.map((u, index) => {
                   const id = getId(u);
                   const role = getUserRole(u);
+                  const fallbackKey = `${getEmail(u)}-${getName(u)}-${index}`;
                   return (
                     <tr
-                      key={String(id ?? Math.random())}
+                      key={String(id ?? fallbackKey)}
                       className="border-t border-white/[0.06] hover:bg-white/[0.03] transition-colors"
                     >
                       <td className="px-5 py-3 font-black text-white tabular-nums">{id ?? "—"}</td>

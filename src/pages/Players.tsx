@@ -23,6 +23,29 @@ type PlayersResponse = {
 };
 
 const normalizePlayers = (payload: unknown): PlayersResponse => {
+  if (Array.isArray(payload)) {
+    const items: PlayerItem[] = payload
+      .map((it: any) => ({
+        playerId: Number(it.playerId ?? it.id ?? 0),
+        playerName: String(it.playerName ?? it.name ?? ""),
+        guildName: typeof it.guildName === "string" ? it.guildName : null,
+        latestScore: typeof it.latestScore === "number" ? it.latestScore : it.latestScore != null ? Number(it.latestScore) : null,
+        latestRank: typeof it.latestRank === "number" ? it.latestRank : it.latestRank != null ? Number(it.latestRank) : null,
+        serverName: typeof it.serverName === "string" ? it.serverName : null,
+      }))
+      .filter((p: PlayerItem) => p.playerId && p.playerName);
+
+    return {
+      items,
+      totalCount: items.length,
+      pageNumber: 1,
+      pageSize: items.length,
+      totalPages: 1,
+      hasPrevious: false,
+      hasNext: false,
+    };
+  }
+
   const obj = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   const itemsRaw = Array.isArray((obj as any).items) ? (obj as any).items : [];
   const items: PlayerItem[] = itemsRaw
@@ -60,6 +83,8 @@ const Players = () => {
 
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [serverIdInput, setServerIdInput] = useState("");
+  const [serverId, setServerId] = useState("");
 
   useEffect(() => {
     const handle = setTimeout(() => setSearchTerm(searchInput.trim()), 500);
@@ -71,32 +96,46 @@ const Players = () => {
   }, [searchTerm]);
 
   useEffect(() => {
+    if (serverId) setPage(1);
+  }, [serverId]);
+
+  useEffect(() => {
     const run = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const numericId = /^\d+$/.test(searchTerm) ? searchTerm : "";
-        if (numericId) {
-          const data = await apiJson<unknown>(`/Players/${numericId}`, { method: "GET" });
-          const res = normalizePlayers({ items: [data], totalCount: 1, pageNumber: 1, pageSize: 1, totalPages: 1, hasPrevious: false, hasNext: false });
-          setItems(res.items);
-          setTotalCount(res.totalCount);
-          setTotalPages(res.totalPages);
-          setHasPrevious(res.hasPrevious);
-          setHasNext(res.hasNext);
-        } else {
-          const params = new URLSearchParams();
-          params.set("PageNumber", String(page));
-          params.set("PageSize", String(pageSize));
-          if (searchTerm) params.set("SearchTerm", searchTerm);
-
-          const data = await apiJson<unknown>(`/Players?${params.toString()}`, { method: "GET" });
+        if (serverId) {
+          const data = await apiJson<unknown>(`/Players/server/${serverId}`, { method: "GET" });
           const res = normalizePlayers(data);
           setItems(res.items);
           setTotalCount(res.totalCount);
           setTotalPages(res.totalPages);
           setHasPrevious(res.hasPrevious);
           setHasNext(res.hasNext);
+        } else {
+          const numericId = /^\d+$/.test(searchTerm) ? searchTerm : "";
+          if (numericId) {
+            const data = await apiJson<unknown>(`/Players/${numericId}`, { method: "GET" });
+            const res = normalizePlayers({ items: [data], totalCount: 1, pageNumber: 1, pageSize: 1, totalPages: 1, hasPrevious: false, hasNext: false });
+            setItems(res.items);
+            setTotalCount(res.totalCount);
+            setTotalPages(res.totalPages);
+            setHasPrevious(res.hasPrevious);
+            setHasNext(res.hasNext);
+          } else {
+            const params = new URLSearchParams();
+            params.set("PageNumber", String(page));
+            params.set("PageSize", String(pageSize));
+            if (searchTerm) params.set("SearchTerm", searchTerm);
+
+            const data = await apiJson<unknown>(`/Players?${params.toString()}`, { method: "GET" });
+            const res = normalizePlayers(data);
+            setItems(res.items);
+            setTotalCount(res.totalCount);
+            setTotalPages(res.totalPages);
+            setHasPrevious(res.hasPrevious);
+            setHasNext(res.hasNext);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Failed to load players";
@@ -111,9 +150,23 @@ const Players = () => {
       }
     };
     run();
-  }, [page, pageSize, searchTerm]);
+    }, [page, pageSize, searchTerm, serverId]);
 
   const displayItems = useMemo(() => items, [items]);
+  const queryLabel = serverId ? `Server ${serverId}` : (searchTerm || "All players");
+
+  const handleServerSearch = () => {
+    const value = serverIdInput.trim();
+    if (!value) return;
+    if (!/^\d+$/.test(value)) {
+      setError("Server ID must be a number.");
+      return;
+    }
+    setError(null);
+    setServerId(value);
+    setSearchInput("");
+    setSearchTerm("");
+  };
 
   return (
     <UserPageShell
@@ -150,7 +203,7 @@ const Players = () => {
             <Users className="h-4 w-4 text-teal-600" />
             <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-500">Query</p>
           </div>
-          <p className="mt-2 truncate text-lg font-black text-slate-950">{searchTerm || "All players"}</p>
+          <p className="mt-2 truncate text-lg font-black text-slate-950">{queryLabel}</p>
         </div>
         <div className="rounded-3xl border border-slate-200 bg-white/90 p-4 shadow-sm">
           <label className="mb-2 block text-xs font-black uppercase tracking-[0.22em] text-slate-500">
@@ -160,10 +213,28 @@ const Players = () => {
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
+              onChange={(e) => {
+                if (serverId) setServerId("");
+                setSearchInput(e.target.value);
+              }}
               placeholder="Tìm theo ID hoặc tên..."
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm font-semibold text-slate-800 shadow-sm transition focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <input
+              value={serverIdInput}
+              onChange={(e) => setServerIdInput(e.target.value)}
+              placeholder="Server ID"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm transition focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
+            />
+            <button
+              type="button"
+              onClick={handleServerSearch}
+              className="whitespace-nowrap rounded-2xl bg-teal-600 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-white shadow-sm transition hover:bg-teal-700"
+            >
+              Search
+            </button>
           </div>
         </div>
       </div>
@@ -265,3 +336,4 @@ const Players = () => {
 };
 
 export default Players;
+

@@ -131,8 +131,25 @@ const AdminDashboard = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const res = await readHistory({ pageNumber: 1, pageSize: 200, sortBy: "analysisId", isDescending: true });
-        setItems(res.items as AnalysisItem[]);
+        const allItems: AnalysisItem[] = [];
+        
+        // Fetch from all pages until no more data
+        let pageNum = 1;
+        while (true) {
+          try {
+            const res = await readHistory({ pageNumber: pageNum, pageSize: 100, sortBy: "analysisId", isDescending: true });
+            const pageItems = res.items as AnalysisItem[];
+            
+            if (!pageItems || pageItems.length === 0) break; // Stop if no more data
+            allItems.push(...pageItems);
+            pageNum++;
+          } catch (pageError) {
+            console.warn(`Failed to load page ${pageNum}, stopping pagination`);
+            break;
+          }
+        }
+        
+        setItems(allItems);
       } catch (e: unknown) {
         if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
           navigate("/login");
@@ -671,47 +688,7 @@ const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        {/* -- Leaderboard Table -- */}
-        <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-white/[0.06] flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-teal-500/10">
-              <Trophy className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white">Leaderboard (Total Score)</p>
-              <p className="text-xs text-gray-500 mt-0.5">Top players by total score</p>
-            </div>
-          </div>
-          {leaderboardAgg.list.length === 0 ? (
-            <div className="p-8 text-gray-500 text-sm">No leaderboard data.</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-white/[0.04]">
-                    <th className="px-6 py-4 text-left">Rank</th>
-                    <th className="px-6 py-4 text-left">Player</th>
-                    <th className="px-6 py-4 text-right">Total Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboardAgg.list.slice(0, 10).map((row, idx) => (
-                    <tr
-                      key={row.playerName}
-                      className="border-t border-white/[0.03] hover:bg-white/[0.03] transition-colors duration-200"
-                    >
-                      <td className="px-6 py-4 font-black text-gray-300">#{idx + 1}</td>
-                      <td className="px-6 py-4 text-gray-200 font-semibold">{row.playerName}</td>
-                      <td className="px-6 py-4 text-right font-black text-teal-400 tabular-nums">
-                        {fmtScore(row.totalScore)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        
 
         <div className="h-20" />
       </div>

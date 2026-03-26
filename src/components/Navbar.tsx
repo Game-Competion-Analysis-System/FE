@@ -67,14 +67,15 @@ const Navbar = () => {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-semibold shrink-0">
-          <a className="hover:text-teal-600 transition" href="#features">Features</a>
-          <a className="hover:text-teal-600 transition" href="#how">How It Works</a>
-          <a className="hover:text-teal-600 transition" href="#pricing">Plans</a>
+         
           <Link to="/players" className="hover:text-teal-600 transition">
             Player
           </Link>
           <Link to="/auto" className="hover:text-teal-600 transition">
             Auto
+          </Link>
+          <Link to="/activity-heatmap" className="hover:text-teal-600 transition">
+            Heatmap
           </Link>
           {isAuthed ? (
             <div className="flex items-center gap-3">

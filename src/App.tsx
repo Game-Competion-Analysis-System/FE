@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import Toaster from "./components/Toaster";
 import Auto from "./pages/Auto";
 import Players from "./pages/Players";
+import ActivityHeatmap from "./pages/ActivityHeatmap";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
         <Route path="/dashboard" element={<AdminDashboard />} />
         <Route path="/auto" element={<Auto />} />
         <Route path="/players" element={<Players />} />
+        <Route path="/activity-heatmap" element={<ActivityHeatmap />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminUsers />} />
           <Route path="users" element={<AdminUsers />} />

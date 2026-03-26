@@ -32,10 +32,7 @@ const Login = () => {
       setAuthToken(token);
 
       if (user) setAuthUser(user, rememberMe);
-      const userObj = user && typeof user === "object" ? (user as Record<string, unknown>) : null;
-      const roleRaw = userObj ? (userObj.Role ?? userObj.role) : null;
-      const role = (typeof roleRaw === "string" ? roleRaw : "").trim().toLowerCase();
-      navigate(role === "admin" ? "/admin" : "/");
+      navigate("/");
     } catch (e: unknown) {
       setAuthToken(null);
       setError(e instanceof Error ? e.message : "Login failed");
