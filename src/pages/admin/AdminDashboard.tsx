@@ -354,33 +354,40 @@ const AdminDashboard = () => {
             <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">
               Player
             </label>
-            <div className="relative mb-2.5">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
-              <input
-                type="text"
-                placeholder="Search player�"
-                value={searchPlayer}
-                onChange={e => setSearchPlayer(e.target.value)}
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm transition-all"
-              />
+            <div className="relative">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+                <input
+                  type="text"
+                  placeholder="Search player"
+                  value={searchPlayer}
+                  onChange={e => setSearchPlayer(e.target.value)}
+                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] pl-10 pr-3 py-2.5 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500/30 backdrop-blur-sm transition-all"
+                />
+              </div>
+              {searchPlayer && filteredPlayers.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-white/[0.08] bg-white/[0.08] backdrop-blur-sm overflow-hidden max-h-48 overflow-y-auto">
+                  <div className="divide-y divide-white/[0.05]">
+                    {filteredPlayers.map(p => (
+                      <button
+                        key={p}
+                        onClick={() => { setSelectedPlayer(p); setSearchPlayer(""); }}
+                        className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-all ${
+                          selectedPlayer === p
+                            ? "bg-teal-500/20 text-teal-300 border-l-2 border-teal-400"
+                            : "text-gray-300 hover:bg-white/[0.05] hover:text-gray-100"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-              <select
-                value={selectedPlayer}
-                onChange={e => { setSelectedPlayer(e.target.value); setSearchPlayer(""); }}
-                className="w-full bg-transparent px-4 py-2.5 text-sm font-semibold text-gray-200 focus:outline-none focus:ring-0 custom-scrollbar [&>option]:bg-[#1a1f2e] [&>option]:text-gray-200"
-                size={Math.min(5, filteredPlayers.length || 1)}
-                disabled={!players.length}
-              >
-                {filteredPlayers.length ? (
-                  filteredPlayers.map(p => (
-                    <option key={p} value={p}>{p}</option>
-                  ))
-                ) : (
-                  <option value="">Not found</option>
-                )}
-              </select>
-            </div>
+            {selectedPlayer && (
+              <p className="mt-2 text-xs text-teal-400 font-semibold">✓ {selectedPlayer}</p>
+            )}
           </motion.div>
         </motion.div>
 

@@ -217,10 +217,17 @@ const Players = () => {
                 if (serverId) setServerId("");
                 setSearchInput(e.target.value);
               }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // Force search immediately on Enter
+                  setSearchTerm(searchInput.trim());
+                }
+              }}
               placeholder="Tìm theo ID hoặc tên..."
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-11 py-3 text-sm font-semibold text-slate-800 shadow-sm transition focus:border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
           </div>
+          <p className="mt-2 text-xs text-slate-500">Tự động tìm kiếm sau 500ms hoặc nhấn Enter</p>
           <div className="mt-4 flex items-center gap-2">
             <input
               value={serverIdInput}
@@ -241,19 +248,25 @@ const Players = () => {
 
       {isLoading ? (
         <div className="rounded-3xl border border-teal-100 bg-white/80 px-6 py-5 font-semibold text-teal-700 shadow-sm">
-          Đang tải danh sách player...
+          ⏳ Đang tải danh sách player...
         </div>
       ) : null}
 
       {error ? (
         <div className="rounded-3xl border border-red-200 bg-red-50 px-6 py-5 font-semibold text-red-700 shadow-sm">
-          {error}
+          ❌ Lỗi: {error}
         </div>
       ) : null}
 
-      {!isLoading && !error && displayItems.length === 0 ? (
+      {!isLoading && !error && displayItems.length === 0 && (searchTerm || serverId) ? (
+        <div className="rounded-3xl border border-amber-200 bg-amber-50 px-6 py-5 font-semibold text-amber-700 shadow-sm">
+          ⚠️ Không tìm thấy player nào khớp với "{searchTerm || `server ${serverId}`}". Thử tìm kiếm với từ khóa khác.
+        </div>
+      ) : null}
+
+      {!isLoading && !error && displayItems.length === 0 && !searchTerm && !serverId ? (
         <div className="rounded-3xl border border-slate-200 bg-white/80 px-6 py-5 font-semibold text-slate-700 shadow-sm">
-          Không có dữ liệu.
+          Nhập tên hoặc ID player để bắt đầu tìm kiếm.
         </div>
       ) : null}
 

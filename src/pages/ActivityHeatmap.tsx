@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Calendar, TrendingUp, ArrowLeft, Users } from "lucide-react";
+import { Calendar, ArrowLeft, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiJson } from "@/lib/api";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -539,8 +539,6 @@ const ActivityHeatmap = () => {
                 {/* Legend Row */}
                 <div className="mt-5 pt-4 border-t border-white/[0.10]">
                   <div className="flex items-center justify-between text-base text-gray-300 font-bold">
-                    <span>Thấp {minValue.toLocaleString()}</span>
-                    <span>Cao {maxValue.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -548,27 +546,7 @@ const ActivityHeatmap = () => {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Max Activity</p>
-              <p className="text-2xl font-black text-teal-300 flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                {maxValue.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Total Entries</p>
-              <p className="text-2xl font-black text-white">
-                {heatmapData.reduce((sum, c) => sum + c.count, 0)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Avg Per Slot</p>
-              <p className="text-2xl font-black text-white">
-                {heatmapData.length > 0 ? Math.round(heatmapData.reduce((sum: number, c) => sum + c.value, 0) / heatmapData.length) : 0}
-              </p>
-            </div>
-          </div>
+          
 
           {/* Monthly Stats Chart */}
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 backdrop-blur-sm">

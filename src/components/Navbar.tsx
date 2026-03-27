@@ -74,9 +74,11 @@ const Navbar = () => {
           <Link to="/auto" className="hover:text-teal-600 transition">
             Auto
           </Link>
-          <Link to="/activity-heatmap" className="hover:text-teal-600 transition">
-            Heatmap
-          </Link>
+          {isAdmin ? (
+            <Link to="/activity-heatmap" className="hover:text-teal-600 transition">
+              Heatmap
+            </Link>
+          ) : null}
           {isAuthed ? (
             <div className="flex items-center gap-3">
               {!isAdmin ? (
@@ -161,6 +163,15 @@ const Navbar = () => {
           >
             Auto
           </Link>
+          {isAdmin ? (
+            <Link
+              to="/activity-heatmap"
+              onClick={() => setOpen(false)}
+              className="block px-2 py-2 text-teal-700 font-semibold hover:bg-teal-50 rounded"
+            >
+              Heatmap
+            </Link>
+          ) : null}
           <div className="pt-2">
             {isAuthed ? (
               <div className="space-y-2">
